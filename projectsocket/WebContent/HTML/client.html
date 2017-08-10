@@ -14,8 +14,21 @@
     <input type="button" value="Disconect" onclick="DisconnectChatServer()" />
     <br>
     <input type="button" value="Upload" onclick="sendFile()" />
+    <br>
+    <input type="button" value="autentication" onclick="autentication()" />
+    
     <script>
         var ws;
+        
+        function autentication(){
+        	var login_pass = {
+        			login : "user",
+        			password : "pass"
+        	}
+        	var json = JSON.stringify(login_pass);
+        	console.log(json);
+        	ws.send(json);
+        }
         
 		function DisconnectChatServer(){
 			ws.send('end');

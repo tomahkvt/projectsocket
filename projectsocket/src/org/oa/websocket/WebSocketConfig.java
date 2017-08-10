@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import javax.websocket.CloseReason;
-import javax.websocket.EncodeException;
+
 import javax.websocket.EndpointConfig;
 import javax.websocket.OnClose;
 import javax.websocket.OnError;
@@ -23,7 +23,6 @@ import javax.websocket.server.ServerEndpoint;
 
 
 @ServerEndpoint("/receive/fileserver")
-
 public class WebSocketConfig {
     static File uploadedFile = null;
     static String fileName = null;
@@ -54,6 +53,10 @@ public class WebSocketConfig {
     @OnMessage
     public void message(Session session, String msg) {
         System.out.println("got msg: " + msg);
+        if (msg.contains("login") == true){
+        	System.out.println("get login");
+        }
+        
         if(!msg.equals("end")) {
             fileName=msg.substring(msg.indexOf(':')+1);
             uploadedFile = new File(filePath+fileName);
@@ -80,7 +83,7 @@ public class WebSocketConfig {
         String jsonString = "1234";
        
         try {
-        	// jsonString = mapper.writeValueAsString(jsonResponse);
+        	jsonString = mapper.writeValueAsString(jsonResponse);
 			session.getBasicRemote().sendText(jsonString);;
 		} catch (IOException e) {
 			e.printStackTrace();
