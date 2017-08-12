@@ -2,84 +2,105 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Chat</title>
-<script type="text/javascript" src="/projectsocket/HTML/jquery-2.1.4.min.js"></script>
+<script type="text/javascript"
+	src="/projectsocket/HTML/jquery-2.1.4.min.js"></script>
 </head>
 <body>
-    <h2>File Upload</h2>
-    Select file
-    <input type="file" id="filename" />
-    <br>
-    <input type="button" value="Connect" onclick="connectChatServer()" />
-    <br>
-    <input type="button" value="Disconect" onclick="DisconnectChatServer()" />
-    <br>
-    <input type="button" value="Upload" onclick="sendFile()" />
-    <br>
-    <input type="button" value="autentication" onclick="autentication()" />
-    
-    <script>
-        var ws;
-        
-        function autentication(){
-        	var login_pass = {
-        			login : "user",
-        			password : "pass"
-        	}
-        	var json = JSON.stringify(login_pass);
-        	console.log(json);
-        	ws.send(json);
-        }
-        
-		function DisconnectChatServer(){
+	<h2>File Upload</h2>
+	<table border="1">
+		<tr>
+			<td>Select file</td>
+			<td><input type="file" id="filename" /></td>
+		</tr>
+		<tr><td>
+		<input type="button" value="Connect" onclick="connectChatServer()" />
+		</td></tr>
+		<tr><td>
+		<input type="button" value="Disconect"
+			onclick="DisconnectChatServer()" />
+		</td></tr>
+		<tr><td>
+		<input type="button" value="Upload" onclick="sendFile()" />
+		</td></tr>
+		<tr>
+		<td>
+		<input type="button" value="autentication" onclick="autentication()" />
+		</td>
+		<td>
+		Login
+		<input id="id_login" type="text">
+		</td>
+		<td>
+		Pass
+		<input id="id_password" type="text">
+		</td>
+	</table>
+			<textarea id="id_div" name="comment" cols="150" rows="40"></textarea>
+			
+		<script>
+		var ws;
+
+		function autentication() {
+			var login_pass = {
+				login : $("#id_login").val(),
+				password : $("#id_password").val()
+			}
+			var json = JSON.stringify(login_pass);
+			console.log(json);
+			ws.send(json);
+		}
+
+		function DisconnectChatServer() {
 			ws.send('end');
 			ws.close();
 		}
-		
-        function connectChatServer() {
-            ws = new WebSocket(
-                    "ws://localhost:8080/projectsocket/receive/fileserver");
 
-            ws.binaryType = "arraybuffer";
-            ws.onopen = function() {
-                alert("Connected.")
-            };
+		function connectChatServer() {
+			ws = new WebSocket("ws://localhost:8080/projectsocket/receive/fileserver");
 
-            ws.onmessage = function(evt) {
-            	console.log(evt.data);
-                alert(evt.data);
-            };
+			ws.binaryType = "arraybuffer";
+			ws.onopen = function() {
+				//alert("Connected.")
+				$('#id_div').append("Connected." + '&#10;');
+			};
 
-            ws.onclose = function() {
-                alert("Connection is closed...");
-            };
-            ws.onerror = function(e) {
-                alert(e.msg);
-            }
+			ws.onmessage = function(evt) {
+				console.log('Received message: ', evt.data);
+				$('#id_div').append(evt.data + '&#10;');
+				var local_log = $('#id_div');
+				local_log.scrollTop(local_log[0].scrollHeight);
+			};
 
-        }
+			ws.onclose = function() {
+				//alert("Connection is closed...");
+				$('#id_div').append("Connection is closed..." + '&#10;');
+			};
+			ws.onerror = function(e) {
+				alert(e.msg);
+			}
 
-        function sendFile() {
-            var file = document.getElementById('filename').files[0];
-            ws.send('filename:'+file.name);
-            var reader = new FileReader();
-            var rawData = new ArrayBuffer();            
-            //alert(file.name);
+		}
 
-            reader.loadend = function() {
+		function sendFile() {
+			var file = document.getElementById('filename').files[0];
+			ws.send('filename:' + file.name);
+			var reader = new FileReader();
+			var rawData = new ArrayBuffer();
+			//alert(file.name);
 
-            }
-            reader.onload = function(e) {
-                rawData = e.target.result;
-                ws.send(rawData);
-                alert("the File has been transferred.")
-                //ws.send('end');
-            }
+			reader.loadend = function() {
 
-            reader.readAsArrayBuffer(file);
+			}
+			reader.onload = function(e) {
+				rawData = e.target.result;
+				ws.send(rawData);
+				alert("the File has been transferred.")
+				//ws.send('end');
+			}
 
-        }
+			reader.readAsArrayBuffer(file);
 
-
-    </script>
+		}
+	</script>
 </body>
 </html>
