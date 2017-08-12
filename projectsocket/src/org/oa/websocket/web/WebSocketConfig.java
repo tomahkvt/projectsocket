@@ -1,4 +1,4 @@
-package org.oa.websocket;
+package org.oa.websocket.web;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -10,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import javax.annotation.PostConstruct;
 import javax.websocket.CloseReason;
 
 import javax.websocket.EndpointConfig;
@@ -20,8 +21,22 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.server.ServerEndpoint;
 
-@ServerEndpoint("/receive/fileserver")
+import org.oa.websocket.model.JsonResponse;
+import org.oa.websocket.model.User;
+import org.oa.websocket.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.socket.server.standard.SpringConfigurator;
+
+
+
+
+@Service
+@ServerEndpoint(value = "/receive/fileserver", configurator = SpringConfigurator.class)
 public class WebSocketConfig {
+	@Autowired
+	private UserRepository userRepository;
+	
 	private static final String MESSAGE_START_LOGIN = "{\"login\":";
 	private static final String MESSAGE_START_END = "end";
 	private static final String MESSAGE_START_FILENAME = "filename:";
@@ -31,6 +46,11 @@ public class WebSocketConfig {
 	final static String filePath = "e:/3/";
 	private boolean auth = false;
 
+	public WebSocketConfig() {
+
+	}
+
+	
 	@OnOpen
 	public void open(Session session, EndpointConfig conf) {
 		System.out.println("session=" + session.getId() + " Auth=" + isAuth());
@@ -111,10 +131,10 @@ public class WebSocketConfig {
 	private void check_authentication(Session session, String msg) {
 		System.out.println("get login");
 		ObjectMapper mapper = new ObjectMapper();
-		AuthenticationData auth = null;
+		User user = null;
 		JsonResponse jsonResponse;
 		try {
-			auth = mapper.readValue(msg, AuthenticationData.class);
+			user = mapper.readValue(msg, User.class);
 		} catch (JsonParseException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -126,7 +146,7 @@ public class WebSocketConfig {
 			e.printStackTrace();
 		}
 
-		boolean resultAuth = auth.equals(new AuthenticationData("user", "pass"));
+		boolean resultAuth = userRepository.checkAuthentication(user);
 		if (resultAuth == true) {
 			System.out.println("Auth true");
 			this.setAuth(true);

@@ -1,7 +1,7 @@
 /*
  * Class configure WebMVC
  */
-package org.oa.websocket;
+package org.oa.websocket.web;
 
 import java.io.IOException;
 
@@ -21,7 +21,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 @Configuration
 @EnableWebMvc
-@ComponentScan("org.oa.websocket")
+@ComponentScan("org.oa.websocket.web")
 public class WebConfig extends WebMvcConfigurerAdapter {
 
 	  @Override

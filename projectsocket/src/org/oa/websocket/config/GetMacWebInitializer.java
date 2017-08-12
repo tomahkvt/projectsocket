@@ -1,5 +1,5 @@
-package org.oa.websocket;
-import org.oa.websocket.WebConfig;
+package org.oa.websocket.config;
+import org.oa.websocket.web.WebConfig;
 import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
 
 public class GetMacWebInitializer extends AbstractAnnotationConfigDispatcherServletInitializer {

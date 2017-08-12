@@ -1,12 +1,13 @@
-package org.oa.websocket;
+package org.oa.websocket.config;
 
 import java.util.regex.Pattern;
+
+import org.oa.websocket.config.RootConfig.WebPackage;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.core.type.filter.RegexPatternTypeFilter;
-import org.oa.websocket.RootConfig.WebPackage;
 
 @Configuration
 @ComponentScan(basePackages = { "org.oa.websocket" }, excludeFilters = {

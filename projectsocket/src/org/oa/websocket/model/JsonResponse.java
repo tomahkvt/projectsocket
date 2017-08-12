@@ -1,4 +1,4 @@
-package org.oa.websocket;
+package org.oa.websocket.model;
 
 public class JsonResponse {
 	private String status;
