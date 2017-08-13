@@ -4,13 +4,13 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
-
-import javax.annotation.PostConstruct;
 import javax.websocket.CloseReason;
 
 import javax.websocket.EndpointConfig;
@@ -21,6 +21,8 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.server.ServerEndpoint;
 
+import org.apache.log4j.Logger;
+
 import org.oa.websocket.model.JsonResponse;
 import org.oa.websocket.model.User;
 import org.oa.websocket.repository.UserRepository;
@@ -28,73 +30,105 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.server.standard.SpringConfigurator;
 
-
-
-
+/**
+ * Class description goes here.
+ *
+ * @version 0.03 14 Aug 2017
+ * @author Tomakh Konstatin
+ */
 @Service
 @ServerEndpoint(value = "/receive/fileserver", configurator = SpringConfigurator.class)
 public class WebSocketConfig {
 	@Autowired
 	private UserRepository userRepository;
-	
+	private static final String COMMAND = "cmd /c dir /a ";
+	final static String filePath = "e:/3";
 	private static final String MESSAGE_START_LOGIN = "{\"login\":";
-	private static final String MESSAGE_START_END = "end";
 	private static final String MESSAGE_START_FILENAME = "filename:";
-	static File uploadedFile = null;
-
-	static FileOutputStream fos = null;
-	final static String filePath = "e:/3/";
+	private File uploadedFile = null;
+	private FileOutputStream fos = null;
 	private boolean auth = false;
-
+	private static Logger log = Logger.getLogger(WebSocketConfig.class);
+	
 	public WebSocketConfig() {
 
 	}
 
-	
 	@OnOpen
 	public void open(Session session, EndpointConfig conf) {
-		System.out.println("session=" + session.getId() + " Auth=" + isAuth());
+		log.info("Websocket opened session=" + session.getId());
 		System.out.println("chat ws server open");
 	}
 
+	
+	 /**
+	  * This method uses for upload file to server
+	  * @param msg messgae
+	  * @param last if this last message last = true
+	  * @param session session of WebSocket
+	  */
 	@OnMessage
 	public void processUpload(ByteBuffer msg, boolean last, Session session) {
-		JsonResponse jsonResponse = null;
-
-		System.out.println("Binary Data");
-		System.out.println("session=" + session.getId() + " Auth=" + isAuth());
 		if (isAuth() == true) {
-			if (isAuth() == false) {
-				this.close(session, null);
-			}
 			while (msg.hasRemaining()) {
 				try {
 					fos.write(msg.get());
 				} catch (IOException e) {
-					e.printStackTrace();
+					log.error("Error write file" + e.getMessage());
 				}
 			}
-
-			jsonResponse = new JsonResponse("OK", "File transfer");
-		} else {
-			jsonResponse = new JsonResponse("Error", "No Access");
 		}
 
-		ObjectMapper mapper = new ObjectMapper();
-		String jsonString = null;
-		try {
-
-			jsonString = mapper.writeValueAsString(jsonResponse);
-			session.getBasicRemote().sendText(jsonString);
-		} catch (IOException e) {
-			e.printStackTrace();
+		if (last == true) {
+			log.info("Binary Data session=" + session.getId() + " Auth=" + isAuth());
+			this.closeFile(session);
+			this.excuteCommand(session);
+			if (isAuth() == true) {
+				sendMessageToClient(session, "OK", "File transfer");
+			} else {
+				sendMessageToClient(session, "Error", "No Access");
+			}
 		}
 	}
 
+
+	 /**
+	  * This method execute command in shell
+	  * var command set in constant COMMAND
+	  * @param session session of WebSocket
+	  */
+	private void excuteCommand(Session session) {
+		StringBuffer output = new StringBuffer();
+		Process p;
+		try {
+			System.out.println(COMMAND + uploadedFile.getAbsolutePath());
+			p = Runtime.getRuntime().exec(COMMAND + uploadedFile.getAbsolutePath());
+			p.waitFor();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+			String line = "";
+			while ((line = reader.readLine()) != null) {
+				output.append(line + "\n");
+			}
+		} catch (Exception e) {
+			log.error("Websocket error executing comand session=" + session.getId() + 
+					" Error:" + e.getMessage());
+		}
+
+		log.info("Result executing command:" + output.toString());
+		sendMessageToClient(session, "Result Execute comand", output.toString());
+	}
+
+	
+	 /**
+	  * This method get message and check begin sequence and call the corresponding method 
+	  * @param session session of WebSocket
+ 	  * @param message
+	  */
 	@OnMessage
 	public void message(Session session, String msg) {
-		System.out.println("session=" + session.getId() + " Auth=" + isAuth());
-		System.out.println("got msg: " + msg);
+		log.info("Web socket session=" + session.getId() + " Auth=" + isAuth());
+		log.info("Web socket got msg: " + msg);
 		if (msg.startsWith(MESSAGE_START_LOGIN) == true) {
 			check_authentication(session, msg);
 		}
@@ -103,21 +137,31 @@ public class WebSocketConfig {
 			create_file(session, msg);
 		}
 
-		if (msg.startsWith(MESSAGE_START_END) == true) {
-			doIfGetEnd(session, msg);
-		}
-
 	}
 
+	
+	 /**
+	  * This method get message and check begin sequence and call the corresponding method 
+	  * @param session session of WebSocket
+	  * @param reason of closing Websocket
+	  */
 	@OnClose
 	public void close(Session session, CloseReason reason) {
-		System.out.println("socket closed: " + reason.getReasonPhrase());
+		File uploadDirectory = new File(filePath + "/" + session.getId());
+		if (uploadDirectory.exists() == true) {
+			File[] contents = uploadDirectory.listFiles();
+			for (File f : contents) {
+				f.delete();
+			}
+			uploadDirectory.delete();
+		}
+		log.info("Websocket closed session=" + session.getId());
 	}
 
 	@OnError
 	public void error(Session session, Throwable t) {
-		t.printStackTrace();
-
+		log.error("Websocket closed session=" + session.getId() + 
+				" Error:" + t.getMessage());
 	}
 
 	public boolean isAuth() {
@@ -127,74 +171,90 @@ public class WebSocketConfig {
 	public void setAuth(boolean auth) {
 		this.auth = auth;
 	}
-
+	
+	 /**
+	  * This method check user authentication 
+	  * @param session session of WebSocket
+	  * @param message
+	  */
 	private void check_authentication(Session session, String msg) {
-		System.out.println("get login");
+		log.info("Websocket authentication session=" + session.getId());
 		ObjectMapper mapper = new ObjectMapper();
 		User user = null;
-		JsonResponse jsonResponse;
+
 		try {
 			user = mapper.readValue(msg, User.class);
 		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error("Websocket session=" + session.getId() + "JsonParseException:" +e.getMessage());
 		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error("Websocket session=" + session.getId() + "JsonMappingException:" +e.getMessage());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error("Websocket session=" + session.getId() + "IOException:" +e.getMessage());
 		}
 
 		boolean resultAuth = userRepository.checkAuthentication(user);
 		if (resultAuth == true) {
-			System.out.println("Auth true");
+			log.info("Websocket authentication true session=" + session.getId());
 			this.setAuth(true);
-			jsonResponse = new JsonResponse("OK", "Authentication OK");
+			sendMessageToClient(session, "OK", "Authentication OK");
 		} else {
-			System.out.println("Auth false");
+			log.info("Websocket authentication false session=" + session.getId());
 			this.setAuth(false);
-			jsonResponse = new JsonResponse("Error", "Authentication Error");
+			sendMessageToClient(session, "Error", "Authentication Error");
 		}
-
-		mapper = new ObjectMapper();
-		String jsonString = null;
-		try {
-			jsonString = mapper.writeValueAsString(jsonResponse);
-			session.getBasicRemote().sendText(jsonString);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
 	}
 
-	private void doIfGetEnd(Session session, String msg) {
-		System.out.println("get end:");
+	 /**
+	  * This method close file 
+	  * @param session session of WebSocket
+	  */	
+	private void closeFile(Session session) {
+
 		try {
 			if (fos != null) {
 				fos.flush();
 				fos.close();
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Websocket session=" + session.getId() + "on file close IOException:" +e.getMessage());
 		}
 	}
 
+
+	 /**
+	  * This method close file 
+	  * @param session session of WebSocket
+	  * @param message
+	  */	
 	private void create_file(Session session, String msg) {
-		JsonResponse jsonResponse = null;
+		File uploadDirectory = null;
 		if (isAuth() == true) {
 			System.out.println("get file:");
 			String fileName = msg.substring(msg.indexOf(':') + 1);
-			uploadedFile = new File(filePath + fileName);
+			uploadDirectory = new File(filePath + "/" + session.getId());
+			if (uploadDirectory.exists() == false) {
+				uploadDirectory.mkdirs();
+			}
+			uploadedFile = new File(filePath + "/" + session.getId() + "/" + fileName);
 			try {
 				fos = new FileOutputStream(uploadedFile);
 			} catch (FileNotFoundException e) {
-				e.printStackTrace();
+				log.error("Websocket session=" + session.getId() + "file not found IOException:" +e.getMessage());
 			}
-			jsonResponse = new JsonResponse("OK", "File Created");
+			sendMessageToClient(session, "OK", "File Created");
 		} else {
-			jsonResponse = new JsonResponse("Error", "No Access");
+			sendMessageToClient(session, "Error", "No Access");
 		}
+	}
+
+	 /**
+	  * This method for send message to Websocket client
+	  * @param session session of WebSocket
+	  * @param status
+	  * @param response
+	  */	
+	private void sendMessageToClient(Session session, String status, String response) {
+		JsonResponse jsonResponse = new JsonResponse(status, response);
 		ObjectMapper mapper = new ObjectMapper();
 		String jsonString = null;
 		try {
@@ -204,5 +264,4 @@ public class WebSocketConfig {
 			e.printStackTrace();
 		}
 	}
-
 }
