@@ -7,13 +7,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*
- * Class:     org_oa_websocket_jni_ArServerDetectorJni
- * Method:    arServerDetectorJni
- * Signature: (Lorg/oa/websocket/model/JniParametrs;)V
- */
-JNIEXPORT void JNICALL Java_org_oa_websocket_jni_ArServerDetectorJni_arServerDetectorJni
-  (JNIEnv *, jclass, jobject);
+
+JNIEXPORT jint JNICALL Java_org_oa_websocket_jni_ArServerDetector_initSession
+  (JNIEnv *, jclass, jobject, jstring,jstring,jintArray,jobjectArray);
+
+  JNIEXPORT jint JNICALL Java_org_oa_websocket_jni_ArServerDetector_detect
+  (JNIEnv *, jclass, jobject, jint,jbyteArray);
+
+
+  JNIEXPORT void JNICALL Java_org_oa_websocket_jni_ArServerDetector_closeSession
+  (JNIEnv *, jclass, jobject, jint);
 
 #ifdef __cplusplus
 }

@@ -15,6 +15,51 @@
 
 #include <stdlib.h>
 
+
+JNIEXPORT jint JNICALL Java_org_oa_websocket_jni_ArServerDetector_initSession
+  (JNIEnv * env, jclass thisClass, jobject thisObj, jstring pyramidPath,jstring dbowPath,jintArray ids,jobjectArray markers){
+
+  	const char *piramidPathStr = (*env)->GetStringUTFChars(env, pyramidPath, NULL);
+
+  	const char *dbowPathStr = (*env)->GetStringUTFChars(env, dbowPath, NULL);
+
+  	BundleData bd;
+    bd.dbowFile = dbowPathStr;
+    bd.pyramidFile = piramidPathStr;
+    const jsize markersPathCount = env->GetArrayLength(markers);
+    const jsize markersIdCount = env->GetArrayLength(ids);
+    double *markersIds = env->GetIntArrayElements(ids, NULL);
+	for (int i = 0; i < markersPathCount; ++i)
+	{
+		int markerId = markersIds[i];
+		jstring markerPath = (jstring)env->GetObjectArrayElement(markers, i);
+		const char *markerPathStr = (*env)->GetStringUTFChars(env, markerPath, NULL);
+		bd.markerFiles[markerId] = markerPathStr;
+
+		(*env)->ReleaseStringUTFChars(env, markerPath, markerPathStr);
+	}
+    
+    int sessionId = createSession(bd);
+
+    (*env)->ReleaseStringUTFChars(env, pyramidPath, piramidPathStr);
+    (*env)->ReleaseStringUTFChars(env, dbowPath, dbowPathStr);
+    return sessionId;
+  }
+
+
+    JNIEXPORT jint JNICALL Java_org_oa_websocket_jni_ArServerDetector_detect
+  (JNIEnv * env, jclass thisClass, jobject thisObj, jint sessionId,jbyteArray image){
+  	jbyte *imageData = env->GetByteArrayElements(image, NULL);
+  	    cv::Mat frame = cv::imdecode(imageData);
+   		return detectSession( sessionId, frame);
+  }
+
+
+    JNIEXPORT void JNICALL Java_org_oa_websocket_jni_ArServerDetector_closeSession
+  (JNIEnv * env, jclass thisClass, jobject thisObj, jint sessionId){
+  	deleteSession(sessionId);
+  }
+
 /** NOTES:
  *  # Function reference:
  *  https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#GetStringUTFCharsGetStringUTFChars
