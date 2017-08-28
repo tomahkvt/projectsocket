@@ -21,6 +21,7 @@ all : arserverdetector.so
 # $@ matches the target, $< matches the first dependancy
 arserverdetector.so : ArServerDetectorJni.o
 	gcc $(CFLAGS) -W -shared $< $(LIBS) -o $@
+	cp arserverdetector.so /opt
 	
 
 # $@ matches the target, $< matches the first dependancy
@@ -31,7 +32,7 @@ ArServerDetectorJni.o : ArServerDetectorJni.c ArServerDetectorJni.h
 # manually this would be: javah -classpath ../bin HelloJNI
 ArServerDetectorJni.h : 
 	@echo $(TARGET_PATH)
-	javah -classpath $(TARGET_PATH) -o ArServerDetectorJni.h org.oa.websocket.jni.ArServerDetectorJni
+	javah -classpath $(TARGET_PATH) -o ArServerDetectorJni.h ArServerDetectorJni
 
 
 clean :
